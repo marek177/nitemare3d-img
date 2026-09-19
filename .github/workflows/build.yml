@@ -1,0 +1,25 @@
+name: Windows build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        rid: [win-x64, win-x86]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Publish
+        run: dotnet publish Nitemare3D.ImgEditor.csproj -c Release -r ${{ matrix.rid }} --self-contained false
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Nitemare3D-IMG-Editor-${{ matrix.rid }}
+          path: bin/Release/net8.0-windows/${{ matrix.rid }}/publish/
