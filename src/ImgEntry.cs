@@ -10,8 +10,10 @@ public sealed class ImgEntry
 
     public byte[] Pixels { get; set; } = Array.Empty<byte>();
 
-    public string Kind =>
-        Height == 64 && (Width == 64 || Width == 128) ? "Wall" : "Sprite/UI";
+    public bool IsWall => Height == 64 && (Width == 64 || Width == 128);
+
+    // Keep this filesystem-safe because Kind is also used in exported PNG names.
+    public string Kind => IsWall ? "Wall" : "Sprite-UI";
 
     public ImgEntry Clone()
     {
@@ -43,5 +45,5 @@ public sealed class ImgEntry
     }
 
     public override string ToString() =>
-        $"#{Index:D4}  {Kind,-9}  {Width}x{Height}";
+        $"#{Index:D4}  {Kind,-10}  {Width}x{Height}";
 }
