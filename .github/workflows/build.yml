@@ -1,4 +1,4 @@
-name: Windows build
+name: Windows .NET 8 build
 
 on:
   workflow_dispatch:
@@ -8,18 +8,45 @@ on:
 
 jobs:
   build:
+    name: Build ${{ matrix.rid }}
     runs-on: windows-latest
     strategy:
+      fail-fast: false
       matrix:
-        rid: [win-x64, win-x86]
+        include:
+          - rid: win-x64
+            platform: x64
+          - rid: win-x86
+            platform: x86
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8 SDK
+        uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
+
+      - name: Show .NET information
+        run: dotnet --info
+
+      - name: Restore
+        run: dotnet restore Nitemare3D.ImgEditor.csproj -r ${{ matrix.rid }}
+
       - name: Publish
-        run: dotnet publish Nitemare3D.ImgEditor.csproj -c Release -r ${{ matrix.rid }} --self-contained false
-      - uses: actions/upload-artifact@v4
+        run: >-
+          dotnet publish Nitemare3D.ImgEditor.csproj
+          -c Release
+          -r ${{ matrix.rid }}
+          --self-contained false
+          -p:Platform=${{ matrix.platform }}
+          --no-restore
+          -o publish/${{ matrix.rid }}
+
+      - name: Upload build
+        uses: actions/upload-artifact@v4
         with:
           name: Nitemare3D-IMG-Editor-${{ matrix.rid }}
-          path: bin/Release/net8.0-windows/${{ matrix.rid }}/publish/
+          path: publish/${{ matrix.rid }}/
+          if-no-files-found: error
