@@ -8,7 +8,7 @@ public static class ImageCodec
     public static Bitmap ToBitmap(ImgEntry entry, GamePalette palette, bool transparentIndex31)
     {
         var bmp = new Bitmap(entry.Width, entry.Height, PixelFormat.Format32bppArgb);
-        bool treatTransparent = transparentIndex31 && entry.Kind != "Wall";
+        bool treatTransparent = transparentIndex31 && !entry.IsWall;
 
         for (int y = 0; y < entry.Height; y++)
         {
@@ -52,6 +52,10 @@ public static class ImageCodec
 
     public static void ExportPng(ImgEntry entry, GamePalette palette, string path, bool transparentIndex31)
     {
+        string? directory = Path.GetDirectoryName(path);
+        if (!string.IsNullOrWhiteSpace(directory))
+            Directory.CreateDirectory(directory);
+
         using Bitmap bmp = ToBitmap(entry, palette, transparentIndex31);
         bmp.Save(path, ImageFormat.Png);
     }
