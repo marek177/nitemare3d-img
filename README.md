@@ -1,6 +1,7 @@
 # Nitemare 3D IMG Editor — C# / .NET 8
 modified img.1, altered textures
 https://chatgpt.com/backend-api/estuary/content?id=file_0000000097ac821090fe72bd0b0f62cb&ts=497167&p=fs&cid=1&sig=897fccc75f78c55adc6ae1d55652dd73fb559c56fccf94ef1eda901ac42b041d&v=0
+
 A graphical editor for the original Nitemare 3D episode graphics containers:
 
 - `IMG.1`
