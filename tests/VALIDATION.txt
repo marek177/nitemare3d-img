@@ -1,0 +1,6 @@
+IMG(4).1: PASS byte-identical; images=840 first=0xbc00
+  relocation test: PASS (+64 bytes before image #1)
+IMG(4).2: PASS byte-identical; images=740 first=0xbc00
+  relocation test: PASS (+64 bytes before image #1)
+IMG(4).3: PASS byte-identical; images=572 first=0xbc00
+  relocation test: PASS (+64 bytes before image #1)
