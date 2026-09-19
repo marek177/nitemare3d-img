@@ -8,6 +8,11 @@ A graphical editor for the original Nitemare 3D episode graphics containers:
 
 The project is deliberately separate from the map editor so graphics editing can be tested independently before the two tools are combined.
 
+AI assistance disclosure
+This is an AI-assisted reverse-engineering and reconstruction project. A substantial part of the analysis, research, documentation, code generation, refactoring, and interpretation of reverse-engineered material has been produced with the assistance of ChatGPT by OpenAI, under the direction and review of marek177.
+
+Git commit authorship therefore identifies the account that committed the files and should not be interpreted as meaning that every analysis, document, or line of code was written manually and independently by the repository owner. AI-generated or AI-assisted findings may contain errors, especially where original source code or symbols are unavailable, so important reverse-engineering conclusions should be independently verified against the original executable and game data.
+
 ## Current features
 
 - Open original `IMG.1`, `IMG.2`, `IMG.3`.
