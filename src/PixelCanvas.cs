@@ -91,7 +91,7 @@ public sealed class PixelCanvas : Control
             }
         }
 
-        bool transparent = _entry.Kind != "Wall";
+        bool transparent = !_entry.IsWall;
 
         for (int y = 0; y < _entry.Height; y++)
         {
