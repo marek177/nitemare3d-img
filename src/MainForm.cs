@@ -99,7 +99,7 @@ public sealed class MainForm : Form
 
         foreach (var c in new[]
         {
-            ("Index", 58), ("Type", 78), ("Size", 70), ("Offset", 82), ("Refs", 45)
+            ("Index", 58), ("Group", 72), ("Frame", 52), ("Type", 78), ("Size", 70), ("Offset", 82), ("Refs", 45)
         })
             list.Columns.Add(c.Item1, c.Item2);
 
@@ -279,7 +279,9 @@ public sealed class MainForm : Form
             hist.Clear();
             current = doc.Entries.Count > 0 ? 0 : -1;
             Rebuild();
-            Select(current);
+            SelectList(current);
+            if (list.Items.Count > 0)
+                list.Items[0].EnsureVisible();
             RefreshUi();
         }
         catch (Exception e)
@@ -361,6 +363,9 @@ public sealed class MainForm : Form
                     continue;
 
                 var x = new ListViewItem(e.Index.ToString("D4"));
+                var gf = doc.GetGroupFrame(e);
+                x.SubItems.Add(gf.Groups);
+                x.SubItems.Add(gf.Frame >= 0 ? gf.Frame.ToString("D2") : "-");
                 x.SubItems.Add(e.Kind);
                 x.SubItems.Add($"{e.Width}x{e.Height}");
                 x.SubItems.Add($"0x{e.OriginalOffset:X}");
@@ -374,6 +379,15 @@ public sealed class MainForm : Form
         }
 
         list.EndUpdate();
+
+        // Always keep the real first IMG record visible. Older builds could
+        // open with 0002 at the top even though records 0000/0001 existed.
+        if (list.Items.Count > 0 && (keep <= 0 || current <= 0))
+        {
+            list.Items[0].Selected = true;
+            list.Items[0].Focused = true;
+            list.Items[0].EnsureVisible();
+        }
     }
 
     void Select(int n)
@@ -422,6 +436,8 @@ public sealed class MainForm : Form
         details.Text = e is null
             ? "No image selected."
             : $"Index: {e.Index}\r\n" +
+              $"Group: {doc!.GetGroupFrame(e).Groups}\r\n" +
+              $"Frame: {(doc.GetGroupFrame(e).Frame >= 0 ? doc.GetGroupFrame(e).Frame.ToString("D2") : "-")}\r\n" +
               $"Type: {e.Kind}\r\n" +
               $"Size: {e.Width}x{e.Height}\r\n" +
               $"Offset: 0x{e.OriginalOffset:X}\r\n" +
@@ -484,6 +500,53 @@ public sealed class MainForm : Form
         }
     }
 
+    enum Wall128ImportMode
+    {
+        Cancel,
+        DuplicateBoth,
+        ReplaceLeft,
+        ReplaceRight
+    }
+
+    Wall128ImportMode AskWall128ImportMode()
+    {
+        using var dlg = new Form
+        {
+            Text = "Import 64x64 into 128x64 wall",
+            StartPosition = FormStartPosition.CenterParent,
+            FormBorderStyle = FormBorderStyle.FixedDialog,
+            MinimizeBox = false,
+            MaximizeBox = false,
+            ShowInTaskbar = false,
+            ClientSize = new Size(430, 150)
+        };
+
+        dlg.Controls.Add(new Label
+        {
+            Left = 12,
+            Top = 12,
+            Width = 405,
+            Height = 42,
+            Text = "This 128x64 wall contains two 64x64 halves.\r\nChoose how the imported 64x64 texture is used:"
+        });
+
+        Wall128ImportMode result = Wall128ImportMode.Cancel;
+        void AddButton(string text, int left, Wall128ImportMode mode)
+        {
+            var b = new Button { Text = text, Left = left, Top = 72, Width = 95, Height = 32 };
+            b.Click += (_, _) => { result = mode; dlg.DialogResult = DialogResult.OK; dlg.Close(); };
+            dlg.Controls.Add(b);
+        }
+
+        AddButton("Both", 12, Wall128ImportMode.DuplicateBoth);
+        AddButton("Left", 115, Wall128ImportMode.ReplaceLeft);
+        AddButton("Right", 218, Wall128ImportMode.ReplaceRight);
+        AddButton("Cancel", 321, Wall128ImportMode.Cancel);
+
+        dlg.ShowDialog(this);
+        return result;
+    }
+
     void Replace()
     {
         var old = Cur;
@@ -495,6 +558,38 @@ public sealed class MainForm : Form
         try
         {
             using var bmp = new Bitmap(d.FileName);
+
+            // Nitemare 3D 128x64 walls are two logical 64x64 wall halves.
+            // Importing one 64x64 texture must not resize/relocate the IMG record.
+            if (old.Width == 128 && old.Height == 64 && bmp.Width == 64 && bmp.Height == 64)
+            {
+                Wall128ImportMode mode = AskWall128ImportMode();
+                if (mode == Wall128ImportMode.Cancel)
+                    return;
+
+                ImgEntry imported = ImageCodec.FromBitmap(bmp, pal, old.Metadata);
+                hist.PushUndo(current, old);
+
+                for (int y = 0; y < 64; y++)
+                {
+                    for (int x = 0; x < 64; x++)
+                    {
+                        byte px = imported.GetPixel(x, y);
+                        if (mode == Wall128ImportMode.DuplicateBoth || mode == Wall128ImportMode.ReplaceLeft)
+                            old.SetPixel(x, y, px);
+                        if (mode == Wall128ImportMode.DuplicateBoth || mode == Wall128ImportMode.ReplaceRight)
+                            old.SetPixel(x + 64, y, px);
+                    }
+                }
+
+                doc.Dirty = true;
+                canvas.Invalidate();
+                Rebuild();
+                SelectList(current);
+                ResetPreviewView();
+                return;
+            }
+
             if ((bmp.Width != old.Width || bmp.Height != old.Height) &&
                 MessageBox.Show(
                     this,
