@@ -70,6 +70,61 @@ public sealed class ImgDocument
         return doc;
     }
 
+    public (string Groups, int Frame) GetGroupFrame(ImgEntry entry)
+    {
+        // The first 512 DWORDs of the Nitemare 3D IMG header are the Group
+        // pointer table used by the original data. A group points at its first
+        // physical IMG record; following records belong to that group until the
+        // next greater group pointer. Multiple group IDs may alias one start.
+        const int groupCount = 512;
+        const int tableBytes = groupCount * 4;
+        if (Header.Length < tableBytes || entry.OriginalOffset <= 0)
+            return ("-", -1);
+
+        uint target = (uint)entry.OriginalOffset;
+        uint start = 0;
+        var pointers = new uint[groupCount];
+
+        for (int g = 0; g < groupCount; g++)
+        {
+            uint p = BinaryPrimitives.ReadUInt32LittleEndian(Header.AsSpan(g * 4, 4));
+            pointers[g] = p;
+            if (p != 0 && p <= target && p > start)
+                start = p;
+        }
+
+        if (start == 0)
+            return ("-", -1);
+
+        uint next = uint.MaxValue;
+        for (int g = 0; g < groupCount; g++)
+        {
+            uint p = pointers[g];
+            if (p > start && p < next)
+                next = p;
+        }
+
+        if (target >= next)
+            return ("-", -1);
+
+        var groups = new List<int>();
+        for (int g = 0; g < groupCount; g++)
+            if (pointers[g] == start)
+                groups.Add(g);
+
+        int frame = 0;
+        foreach (ImgEntry e in Entries)
+        {
+            if (e.OriginalOffset < start)
+                continue;
+            if (e.OriginalOffset >= target)
+                break;
+            frame++;
+        }
+
+        return (groups.Count == 0 ? "-" : string.Join("/", groups), frame);
+    }
+
     public int CountHeaderReferences(ImgEntry entry)
     {
         if (entry.OriginalOffset <= 0 || entry.OriginalOffset > uint.MaxValue)
